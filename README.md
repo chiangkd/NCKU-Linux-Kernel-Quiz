@@ -446,7 +446,7 @@ void map_deinit(map_t *map)
 ```
 這段主要在釋放整個 hash table 的空間，由 `line 6` 的 `for` loop 遍歷 hash table ，在 `line 8` 的 `for` loop 遍歷在這個 `head` 下所有的 `hash_key` 並且 `free(kn->data)` 以及 `free(kn)` 
 
-`goto bail` 看起來是會在 `twoSum` 空間配置失敗時，進入到 `twoSum` 中的 `goto bail` 然後進入 `map_deinit(map)` ，交給 `map_deinit` 來 `free` 這個 `map`。
+`line 13` 如果沒有 `n->pprev` 也就是已經走到最後一個 `hash_key` 了
 
 ### 延伸問題
 
