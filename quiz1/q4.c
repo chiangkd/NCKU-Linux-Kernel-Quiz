@@ -59,6 +59,5 @@ int longestConsecutive(int *nums, int n_size)
             length = len > length ? len : length;
         }
     }
-
     return length;
 }
