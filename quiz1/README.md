@@ -456,3 +456,291 @@ void map_deinit(map_t *map)
 ## 測驗2
 
 >針對 [LeetCode 82. Remove Duplicates from Sorted List II](https://leetcode.com/problems/remove-duplicates-from-sorted-list-ii/) ，以下是可能的合法 C 程式實作:
+
+
+### trace code
+```c
+#include <stddef.h>
+
+struct ListNode {
+    int val;
+    struct ListNode *next;
+};
+
+struct ListNode *deleteDuplicates(struct ListNode *head)
+{
+    if (!head)
+        return NULL;
+
+    if (COND1) {
+        /* Remove all duplicate numbers */
+        while (COND2)
+            head = head->next;
+        return deleteDuplicates(head->next);
+    }
+
+    head->next = deleteDuplicates(head->next);
+    return head;
+}
+```
+
+根據上述程式碼可以看到如果 `COND1` 不進入的話會執行 `head->next = deleteDuplicates(head->next);` ，也就是接到下一個節點，由此可知 `COND1` 應該是判斷目前節點與下一個是否相同，並且要考慮到 edge case 也就是 在最後一圈時 `head->next` 會指向 `NULL` 因此要加上 `head->next` 之條件，而 `COND2` 為在 `COND1` 確認進入，也就是有重複節點產生時，偷過 `while` 迴圈跳過重複的節點，一樣需要判斷 edge case 所以 `COND2` 與 `COND1` 相同
+- `COND1 = head->next && head->val == head->next->val`
+- `COND2 = head->next && head->val == head->next->val`
+
+### 延伸問題
+- [ ] 嘗試避免遞迴，寫出同樣作用的程式碼
+- [ ] 以類似 Linux 核心的 circular doubly-linked list 改寫，撰寫遞迴和迭代 (iterative) 的程式碼
+
+## 測驗3
+
+>針對 [LeetCode 146. LRU Cache](https://leetcode.com/problems/lru-cache/) ，以下是 [Least Recently Used (LRU)](https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU)) 可能的合法 C 程式實作:
+
+參考資料 [資料結構與演算法：LRU 快取機制](https://josephjsf2.github.io/data/structure/and/algorithm/2020/05/09/LRU.html)
+
+參考 [linux/include/linux/list.h](https://github.com/torvalds/linux/blob/master/include/linux/list.h)
+
+### trace 一下 code
+
+**重要結構體**
+```c
+typedef struct {
+    int capacity, count;             
+    struct list_head dhead, hheads[];
+} LRUCache;
+    
+typedef struct {
+    int key, value;
+    struct list_head hlink, dlink;
+} LRUNode;
+```
+
+
+
+根據 `list.h` 中的定義
+```c
+static inline void INIT_LIST_HEAD(struct list_head *list)
+{
+	WRITE_ONCE(list->next, list);
+	list->prev = list;
+}
+```
+為初始化 list head 並將前後指標都指向自己，成為只有一個節點的 doubly linked list
+
+
+`lRUCacheCreate`
+```c=
+LRUCache *lRUCacheCreate(int capacity)
+{   
+    LRUCache *obj = malloc(sizeof(*obj) + capacity * sizeof(struct list_head));
+    obj->count = 0;
+    obj->capacity = capacity;
+    INIT_LIST_HEAD(&obj->dhead);
+    for (int i = 0; i < capacity; i++)
+        INIT_LIST_HEAD(&obj->hheads[i]);
+    return obj;
+}
+```
+
+`line 3` 配置 `LRUCache` 加上 `capacity * sizeof(struct list_head)` 大小的空間，並初始化。
+
+`line 7` 的 `for` loop 將每個 `obj->hheads[i]` 都初始化並指向自己。
+
+`lRUCacheFree`
+```c=
+void lRUCacheFree(LRUCache *obj)
+{       
+    LRUNode *lru, *n;
+    MMM1 (lru, n, &obj->dhead, dlink) {
+        list_del(&lru->dlink);
+        free(lru);
+    }
+    free(obj); 
+}  
+```
+
+由函數名稱看出是要釋放空間，`line 3` 的 `n` 指的應該是下一個 `LRUNode` ，由此可知 `MMM1` 需要遍歷整個 linked list，且要紀錄 next node 避免 free NULL pointer ， 符合需求的為 `list_for_each_entry_safe` 。
+
+- `MMM1 = list_for_each_entry_safe`
+
+
+`lRUCacheGet`
+```c=
+int lRUCacheGet(LRUCache *obj, int key)
+{
+    LRUNode *lru;
+    int hash = key % obj->capacity;
+    MMM2 (lru, &obj->hheads[hash], hlink) {
+        if (lru->key == key) {
+            list_move(&lru->dlink, &obj->dhead);
+            return lru->value;
+        }
+    }
+    return -1;
+}
+```
+
+當使用 `lRUCacheGet` 方法來取得內容時，會將查找到的 node 從 list 中 搬移至 list 的第一個，所以透過這個函式， 越少被查詢的元素會放置在 list 越尾端的地方。
+由邏輯看出 `MMM2` 是要走訪整個 `hhead` 直到找到符合的 `hash` 值
+所以 `MMM2 = list_for_each_entry` ，如果成功找到了，由 `line 7` 將 `dlink` 移至 `dhead` ，如果沒有查到，則回傳 `-1`
+
+- `MMM2 = list_for_each_entry`
+
+這邊順便複習一下 `list_move` 
+```c
+static inline void list_move(struct list_head *list, struct list_head *head)
+{
+	__list_del_entry(list);
+	list_add(list, head);
+}
+```
+將輸入的節點刪掉之後在將它加到 head 後面的位置
+
+
+`lRUCacheGet`
+```c=
+void lRUCachePut(LRUCache *obj, int key, int value)
+{
+    LRUNode *lru;
+    int hash = key % obj->capacity;
+    MMM3 (lru, &obj->hheads[hash], hlink) {
+        if (lru->key == key) {
+            list_move(&lru->dlink, &obj->dhead);
+            lru->value = value;
+            return;
+        }
+    }
+
+    if (obj->count == obj->capacity) {
+        lru = MMM4(&obj->dhead, LRUNode, dlink);
+        list_del(&lru->dlink);
+        list_del(&lru->hlink);
+    } else {
+        lru = malloc(sizeof(LRUNode));
+        obj->count++;
+    }
+    lru->key = key;
+    list_add(&lru->dlink, &obj->dhead);
+    list_add(&lru->hlink, &obj->hheads[hash]);
+    lru->value = value;
+}
+```
+
+`lRUCachePut` 的作用是
+- 如果 list 還沒有滿，則將元素新增在 list 的第一個位置，同時在 HashMap 新增一個 entry 
+- 如果 list 滿了，將 list 最後一個元素移除， 同時移除 HashMap 中對應的 entry ， 接著在將新的元素新增到 List 的第一個， 同時在 HashMap 中建立 entry 
+
+在 `line 4` 中定義 `hash` 值，再由 `line 5` 判斷是否已經存在於 `list` 中，這裡基本上和 `lRUCacheGet` 相同， 故 `MMM3 = list_for_each_entry`
+- `MMM3 = list_for_each_entry`
+
+接著從 `line 13` 執行上述提到的 `lRUCachePut` 的兩個功能，由此可知 `MMM4` 的作用為取出 list 中的最後一個 node ，再由 `line 15 16` 刪除，故得知 `MMM4 = list_last_entry`
+
+- `MMM4 = list_last_entry`
+
+### 延伸問題
+
+- [ ] 解釋上述程式碼的運作，撰寫完整的測試程式，指出其中可改進之處並實作
+- [ ] 在 Linux 核心找出 LRU 相關程式碼並探討
+
+## 測驗4
+
+>針對 [LeetCode 128. Longest Consecutive Sequence](https://leetcode.com/problems/longest-consecutive-sequence/description/)，以下是可能的合法 C 程式實作:
+
+### trace code
+
+**結構體**
+```c
+struct seq_node {
+    int num;
+    struct list_head link;
+};
+```
+
+`find`
+```c=
+static struct seq_node *find(int num, int size, struct list_head *heads)
+{
+    struct seq_node *node;
+    int hash = num < 0 ? -num % size : num % size;
+    list_for_each_entry (node, &heads[hash], link) {
+        if (node->num == num)
+            return node;
+    }
+    return NULL;
+}
+```
+
+在 `line 4` 定義 hash 值
+- 如果數字小於 0 則 hash value 為 `-num % size`
+- 如果數字大於 0 則 hash value 為 `num % size`
+
+接著走訪整個 list ，如果有找到則 `return` 該 `node`
+如果沒有找到則 `return NULL`
+
+`longestConsecutive`
+```c=
+int longestConsecutive(int *nums, int n_size)
+{
+    int hash, length = 0;
+    struct seq_node *node;
+    struct list_head *heads = malloc(n_size * sizeof(*heads));
+
+    for (int i = 0; i < n_size; i++)
+        INIT_LIST_HEAD(&heads[i]);
+
+    for (int i = 0; i < n_size; i++) {
+        if (!find(nums[i], n_size, heads)) {
+            hash = nums[i] < 0 ? -nums[i] % n_size : nums[i] % n_size;
+            node = malloc(sizeof(*node));
+            node->num = nums[i];
+            list_add(&node->link, &heads[hash]);
+        }
+    }
+
+    for (int i = 0; i < n_size; i++) {
+        int len = 0;
+        int num;
+        node = find(nums[i], n_size, heads);
+        while (node) {
+            len++;
+            num = node->num;
+            list_del(&node->link);
+
+            int left = num, right = num;
+            while ((node = find(LLL, n_size, heads))) {
+                len++;
+                list_del(&node->link);
+            }
+
+            while ((node = find(RRR, n_size, heads))) {
+                len++;
+                list_del(&node->link);
+            }
+
+            length = len > length ? len : length;
+        }
+    }
+
+    return length;
+}
+```
+
+一開始先配置空間並初始化，接著在 `line 10 ~ 17` 開始走訪整個 list ，如果沒有找到 (`find` return `NULL`) ，則配置一個新的節點空間並將它放在 hash table 中， 對於此題來說如果有重複的數值並不重要，所以在這段程式碼中僅將不重複的 node 放到 hash table 中。
+
+做好 hash table 之後 來到 `line 19` ，走訪整個輸入 `nums` 並在 hash table 中查找，進入 `while` loop 後代表有找到 (基本上都會找到，直到 node 為 `NULL`) ，進入迴圈之後將 `num` 儲存起來，並把該節點從 list 中移除。
+
+接著將 `left` 以及 `right` 都設定為 `num` ，題目要求為 `longest consecutive sequence` 
+
+故如果 `nums` 為 `5` ，則需要搜尋
+- `5` `4` `3` `2` .... 等等往下搜尋
+- `5` `6` `7` `8` .... 等等往上搜尋
+
+故由此可知
+- `LLL = --left`
+- `RRR = ++right`
+
+最後在 `line 39` 比較目前找到的 sequence 和過往的比較誰比較長，留下比較長的答案回傳。
+
+## 延伸問題
+- [ ] 解釋上述程式碼的運作，撰寫完整的測試程式，指出其中可改進之處並實作
+- [ ] 嘗試用 Linux 核心風格的 hash table 重新實作上述程式碼
