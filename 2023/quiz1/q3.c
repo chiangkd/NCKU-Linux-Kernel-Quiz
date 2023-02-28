@@ -78,10 +78,11 @@ int xorlist_add(xor_list_t *list, xor_node_t *n)
 
     xor_node_t *real_prev = &list->head;
     xor_node_t *node = real_prev->cmp;
-    if (node == &list->tail)
-        real_next = &list->tail;
-    else
-        real_next = node;
+    // if (node == &list->tail)
+    //     real_next = &list->tail;
+    // else
+    //     real_next = node;
+    real_next = node;
     real_prev->cmp = n;
     n->cmp = XOR_COMP(real_prev, real_next);
     real_next->cmp = XOR_COMP(n, XOR_COMP(real_prev, real_next->cmp));
