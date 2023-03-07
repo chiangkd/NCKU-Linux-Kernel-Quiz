@@ -16,7 +16,7 @@ uint64_t next_pow2_m1(uint64_t x)
 }
 
 /* method 2 */
-uint64_t next_pow2(uint64_t x)
+uint64_t next_pow2_m2(uint64_t x)
 {
     x -= x && 1;
     x |= x >> 1;
@@ -32,14 +32,22 @@ uint64_t next_pow2(uint64_t x)
     return x + 1;
 }
 
+uint64_t next_pow2_m3(uint64_t x)
+{
+    x -= x && 1;
+    return x ? 1 << (64 - __builtin_clzl(x)) : 1;
+}
+
 
 int main()
 {
-    for(int i = 0; i < 0b1000000000000000000000000000000000000000000000000000000000000000; i++) {
-        if (next_pow2(i) != next_pow2_m1(i))
+    for(int i = 0; i < 0b1000000000000000000000; i++) {
+        if (next_pow2_m1(i) != next_pow2_m3(i)){
             printf("failed\n");
+        }
         else
             ;
     }
+
     return 0;
 }
