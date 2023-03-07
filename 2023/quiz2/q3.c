@@ -2,6 +2,12 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include "cpucycles.h"
+
+/* Prevent GCC to optimize out the body of count_utf8 and swar_count_utf8 */
+static volatile size_t _count;
 
 size_t count_utf8(const char *buf, size_t len)
 {
@@ -37,8 +43,41 @@ size_t swar_count_utf8(const char *buf, size_t len)
 
     return count;
 }
+#define BUFSIZE 50000
+#define NTESTS 10
 
-int main()
+
+size_t performance(uint8_t *buf, uint16_t *count)
 {
-    ;
+    size_t ans1, ans2;
+    int64_t tick1, tick2;
+    /* start test */
+    tick1 = cpucycles();
+    ans1 = count_utf8(buf, BUFSIZE);
+    tick2 = cpucycles();
+
+    int64_t no_swar_ticks = tick2 - tick1;
+
+    tick1 = cpucycles();
+    ans2 = swar_count_utf8(buf, BUFSIZE);
+    tick2 = cpucycles();
+
+    int64_t swar_ticks = tick2 - tick1;
+}
+
+int main(void)
+{
+    int seed;
+    seed = (int)time(NULL);
+    srand(seed);
+    uint8_t buf[BUFSIZE];
+    
+    uint16_t *count_no_swar, *count_with_swar;
+    
+    for(int i = 0; i < NTESTS; i++) {
+        for (size_t i = 0; i < BUFSIZE; i++)
+            buf[i] = rand();
+    }
+
+    return 0;
 }
