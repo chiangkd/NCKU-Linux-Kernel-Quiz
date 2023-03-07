@@ -19,8 +19,24 @@ int concatenatedBinary(int n){
     return ans;
 }
 
+int concatenatedBinary_m2(int n){
+
+    // for (int i = 1; i <= n; i++) {
+    //     printf("clz = %d\n", __builtin_clz(i));
+    //     printf("ctz = %d\n", __builtin_ctz(i));
+    // }
+    long ans = 0;
+    const int M = 1e9 + 7;
+    for(int i = 1; i <= n; i++) {
+        ans = (i | ans << (32 - __builtin_clz(i))) % M;
+    }
+
+    return ans;
+}
+
 int main()
 {
-    printf("ans = %d\n", concatenatedBinary(4));
+    printf("ans = %d\n", concatenatedBinary_m2(4));
+    // printf("value = %d\n", __builtin_ffs(0b100010));
     return 0;
 }
